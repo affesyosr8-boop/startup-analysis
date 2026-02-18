@@ -3,79 +3,80 @@ import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 
-# 1. Configuration de la page (Wide layout bech yjiw jnab b3adhhom)
+# 1. Configuration mta3 el Page
 st.set_page_config(page_title="Startup Analysis", layout="wide")
 st.title("💰 Startup Profit Predictor")
 
-# 2. Sidebar - Upload Data
-st.sidebar.header("1. Data Input")
+# 2. Sidebar Upload
+st.sidebar.header("📥 Data Input")
 uploaded_file = st.sidebar.file_uploader("Upload 50_Startups.csv", type="csv")
 
 if uploaded_file is not None:
-    # Read Data
     df = pd.read_csv(uploaded_file)
-    st.write("### Data Preview", df.head())
-
-    # Preprocessing (Encoding)
-    df_encoded = pd.get_dummies(df, columns=['State'], drop_first=True)
-    X = df_encoded.drop('Profit', axis=1)
-    y = df_encoded['Profit']
-
-    # User Inputs pour la prédiction finale
-    st.sidebar.header("2. Predict for new Startup")
-    user_data = {}
-    for col in X.columns:
-        user_data[col] = st.sidebar.number_input(f"Enter {col}", value=float(df_encoded[col].mean()))
-
-    # 3. Affichage des deux méthodes (Numpy vs Pandas)
-    st.write("---")
-    st.subheader("Choisir la méthode de Backward Elimination")
+    st.write("## 📊 Data Preview", df.head())
     
-    col1, col2 = st.columns(2)
+    # Preprocessing automatique (Convert en float pour éviter les erreurs)
+    df_encoded = pd.get_dummies(df, columns=['State'], drop_first=True)
+    X_data = df_encoded.drop('Profit', axis=1).astype(float)
+    y_data = df_encoded['Profit'].astype(float)
 
-    with col1:
-        # --- Méthode NUMPY ---
-        if st.button("Run Backward (Numpy)"):
-            st.markdown("#### 🔢 Résultat Numpy (Indices)")
-            X_numpy = sm.add_constant(np.array(X))
-            SL = 0.05
-            while True:
-                model_np = sm.OLS(y, X_numpy).fit()
-                max_p = max(model_np.pvalues)
-                if max_p > SL:
-                    X_numpy = np.delete(X_numpy, model_np.pvalues.argmax(), axis=1)
-                else:
-                    break
-            st.text(model_np.summary())
+    # 3. Inputs mta3 el utilisateur (Dima dhohrin)
+    st.write("---")
+    st.write("## ✍️ Entrez les valeurs pour la prédiction")
+    cols = st.columns(5)
+    user_inputs = {}
+    
+    # List fixed mta3 el features
+    manual_features = ['R&D Spend', 'Administration', 'Marketing Spend', 'State_Florida', 'State_New_York']
+    
+    for i, feat in enumerate(manual_features):
+        with cols[i % 5]:
+            val_default = float(X_data[feat].mean()) if feat in X_data.columns else 0.0
+            user_inputs[feat] = st.number_input(f"{feat}", value=val_default)
 
-    with col2:
-        # --- Méthode PANDAS ---
-        if st.button("Run Backward (Pandas)"):
-            st.markdown("#### 🐼 Résultat Pandas (Column Names)")
-            X_pd = sm.add_constant(X)
-            SL = 0.05
-            while True:
-                model_pd = sm.OLS(y, X_pd).fit()
-                max_p = model_pd.pvalues.max()
-                if max_p > SL:
-                    var = model_pd.pvalues.idxmax()
-                    st.write(f"Suppression: `{var}`")
-                    X_pd = X_pd.drop(columns=[var])
-                else:
-                    break
+    st.write("---")
+    
+    # 4. Boutounat el Action
+    col_btn1, col_btn2 = st.columns([1, 4])
+    
+    if col_btn1.button("🚀 Lancer Backward Elimination"):
+        st.subheader("🎯 Résultat Optimum")
+        X_opt = sm.add_constant(X_data).astype(float)
+        
+        while True:
+            model = sm.OLS(y_data, X_opt).fit()
+            if model.pvalues.max() > 0.05:
+                var = model.pvalues.idxmax()
+                X_opt = X_opt.drop(columns=[var])
+            else:
+                break
+        
+        st.success(f"Modèle optimisé avec : {list(X_opt.columns)}")
+        st.text(model.summary())
+        
+        # Résultat de la prédiction
+        input_df = pd.DataFrame([user_inputs])
+        input_df = sm.add_constant(input_df, has_constant='add')
+        input_final = input_df[X_opt.columns]
+        prediction = model.predict(input_final)
+        
+        st.metric("Profit Estimé", f"${prediction[0]:,.2f}")
+
+    if col_btn2.button("📜 Tous les Résultats"):
+        st.subheader("Historique de l'élimination")
+        X_all = sm.add_constant(X_data).astype(float)
+        iteration = 1
+        while True:
+            model_step = sm.OLS(y_data, X_all).fit()
+            with st.expander(f"Étape {iteration} - Variables: {len(X_all.columns)}"):
+                st.text(model_step.summary())
             
-            st.success(f"Variables finales: {list(X_pd.columns)}")
-            st.text(model_pd.summary())
-
-            # 4. Prediction finale (basée sur le modèle Pandas)
-            st.write("---")
-            st.subheader("🔮 Prediction Result")
-            new_x = pd.DataFrame([user_data])
-            # On garde seulement les colonnes que le modèle a retenu
-            new_x_const = sm.add_constant(new_x, has_constant='add')[X_pd.columns]
-            pred = model_pd.predict(new_x_const)
-            st.metric("Estimated Profit", f"${pred[0]:,.2f}")
-
+            if model_step.pvalues.max() > 0.05:
+                var = model_step.pvalues.idxmax()
+                X_all = X_all.drop(columns=[var])
+                iteration += 1
+            else:
+                st.success("🎯 Modèle Optimum atteint !")
+                break
 else:
-    # Message d'accueil pour éviter le ValueError au début
-    st.info("👋 Mar7ba bik! Please upload the '50_Startups.csv' file from the sidebar to start.")
+    st.info("👋 Veuillez uploader le fichier CSV pour commencer.")
