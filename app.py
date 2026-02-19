@@ -3,80 +3,72 @@ import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 
-# 1. Configuration mta3 el Page
+# 1. Configuration
 st.set_page_config(page_title="Startup Analysis", layout="wide")
-st.title("💰 Startup Profit Predictor")
+st.title("🚀 Interface d'Analyse des Startups")
 
-# 2. Sidebar Upload
-st.sidebar.header("📥 Data Input")
-uploaded_file = st.sidebar.file_uploader("Upload 50_Startups.csv", type="csv")
+# 2. Upload
+uploaded_file = st.sidebar.file_uploader("Veuillez choisir le fichier 50_Startups.csv", type="csv")
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
-    st.write("## 📊 Data Preview", df.head())
+    st.write("## 📊 Data Preview")
+    st.write(df.head())
     
-    # Preprocessing automatique (Convert en float pour éviter les erreurs)
+    # Preprocessing (Conversion float pour éviter les erreurs)
     df_encoded = pd.get_dummies(df, columns=['State'], drop_first=True)
     X_data = df_encoded.drop('Profit', axis=1).astype(float)
     y_data = df_encoded['Profit'].astype(float)
 
-    # 3. Inputs mta3 el utilisateur (Dima dhohrin)
+    # 3. Inputs (Dima dhohrin)
     st.write("---")
-    st.write("## ✍️ Entrez les valeurs pour la prédiction")
-    cols = st.columns(5)
+    st.write("## ✍️ Entrez les valeurs pour prédire")
+    col_in = st.columns(5)
+    feature_names = ['R&D Spend', 'Administration', 'Marketing Spend', 'State_Florida', 'State_New_York']
     user_inputs = {}
-    
-    # List fixed mta3 el features
-    manual_features = ['R&D Spend', 'Administration', 'Marketing Spend', 'State_Florida', 'State_New_York']
-    
-    for i, feat in enumerate(manual_features):
-        with cols[i % 5]:
-            val_default = float(X_data[feat].mean()) if feat in X_data.columns else 0.0
-            user_inputs[feat] = st.number_input(f"{feat}", value=val_default)
 
-    st.write("---")
-    
-    # 4. Boutounat el Action
+    for i, col_name in enumerate(feature_names):
+        with col_in[i % 5]:
+            default_val = float(X_data[col_name].mean()) if col_name in X_data.columns else 0.0
+            user_inputs[col_name] = st.number_input(f"{col_name}", value=default_val)
+
+    # 4. Boutons
+    st.write("")
     col_btn1, col_btn2 = st.columns([1, 4])
-    
+
     if col_btn1.button("🚀 Lancer Backward Elimination"):
         st.subheader("🎯 Résultat Optimum")
-        X_opt = sm.add_constant(X_data).astype(float)
-        
+        X_pd = sm.add_constant(X_data).astype(float)
         while True:
-            model = sm.OLS(y_data, X_opt).fit()
+            model = sm.OLS(y_data, X_pd).fit()
             if model.pvalues.max() > 0.05:
                 var = model.pvalues.idxmax()
-                X_opt = X_opt.drop(columns=[var])
+                X_pd = X_pd.drop(columns=[var])
             else:
                 break
-        
-        st.success(f"Modèle optimisé avec : {list(X_opt.columns)}")
+        st.success(f"Variables retenues: {list(X_pd.columns)}")
         st.text(model.summary())
         
-        # Résultat de la prédiction
+        # Prédiction
         input_df = pd.DataFrame([user_inputs])
         input_df = sm.add_constant(input_df, has_constant='add')
-        input_final = input_df[X_opt.columns]
+        input_final = input_df[X_pd.columns]
         prediction = model.predict(input_final)
-        
         st.metric("Profit Estimé", f"${prediction[0]:,.2f}")
 
     if col_btn2.button("📜 Tous les Résultats"):
-        st.subheader("Historique de l'élimination")
+        st.subheader("Historique")
         X_all = sm.add_constant(X_data).astype(float)
         iteration = 1
         while True:
             model_step = sm.OLS(y_data, X_all).fit()
             with st.expander(f"Étape {iteration} - Variables: {len(X_all.columns)}"):
                 st.text(model_step.summary())
-            
             if model_step.pvalues.max() > 0.05:
                 var = model_step.pvalues.idxmax()
                 X_all = X_all.drop(columns=[var])
                 iteration += 1
             else:
-                st.success("🎯 Modèle Optimum atteint !")
                 break
 else:
-    st.info("👋 Veuillez uploader le fichier CSV pour commencer.")
+    st.info("👋 Veuillez uploader le fichier CSV dans la barre à gauche.")
