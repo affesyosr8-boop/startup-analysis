@@ -5,24 +5,25 @@ import statsmodels.api as sm
 
 # 1. Configuration
 st.set_page_config(page_title="Startup Analysis", layout="wide")
-st.title("🚀 Interface d'Analyse des Startups")
+st.title("🚀 Interface d'Analyse des Startups (Optimisée)")
 
-# 2. Upload
-uploaded_file = st.sidebar.file_uploader("Veuillez choisir le fichier 50_Startups.csv", type="csv")
+# 2. Upload (FEL WEST MOUSH FEL SIDEBAR)
+st.subheader("📁 1. Charger les données")
+uploaded_file = st.file_uploader("Choisissez le fichier 50_Startups.csv", type="csv")
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
-    st.write("## 📊 Data Preview")
+    st.write("### 📊 Data Preview")
     st.write(df.head())
     
-    # Preprocessing (Conversion float pour éviter les erreurs)
+    # Preprocessing
     df_encoded = pd.get_dummies(df, columns=['State'], drop_first=True)
     X_data = df_encoded.drop('Profit', axis=1).astype(float)
     y_data = df_encoded['Profit'].astype(float)
 
-    # 3. Inputs (Dima dhohrin)
+    # 3. Inputs
     st.write("---")
-    st.write("## ✍️ Entrez les valeurs pour prédire")
+    st.subheader("✍️ 2. Entrez les valeurs pour prédire")
     col_in = st.columns(5)
     feature_names = ['R&D Spend', 'Administration', 'Marketing Spend', 'State_Florida', 'State_New_York']
     user_inputs = {}
@@ -71,4 +72,4 @@ if uploaded_file is not None:
             else:
                 break
 else:
-    st.info("👋 Veuillez uploader le fichier CSV dans la barre à gauche.")
+    st.warning("👈 Veuillez uploader le fichier CSV ci-dessus pour activer l'analyse.")
